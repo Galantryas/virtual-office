@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Generated analysis output
+graphify-out/
+
+# Agent tooling configuration (local only)
+.agents/
+.opencode/
+opencode.json
+skills-lock.json
+AGENTS.md
+
+# Personal notes
+To Do.txt
+
+# OS / editor
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/
+
+# Node
+node_modules/

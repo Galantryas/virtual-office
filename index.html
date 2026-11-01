@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2D Pixel Art Virtual Dev Office & Sprint Manager</title>
+  
+  <!-- Google Fonts: Inter, JetBrains Mono, & Press Start 2P (Retro Pixel) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+  
+  <!-- App Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- Top Navigation Bar -->
+    <header class="top-navbar">
+      <div class="brand">
+        <div class="brand-icon">🏢</div>
+        <div class="brand-text">
+          <h1>Virtual Dev Office <span class="badge">Kanban v2.0</span></h1>
+          <p>Multi-Agent Autonomous Development Simulation</p>
+        </div>
+      </div>
+
+      <div class="navbar-center">
+        <!-- Project Context Selector (Multiple Projects) -->
+        <div class="project-selector-bar" title="Konteks folder proyek aktif untuk sprint ini">
+          <span style="font-size: 13px;">📁</span>
+          <select id="activeProjectSelect" class="form-select project-select" onchange="handleActiveProjectChange(event)">
+            <!-- Dynamically populated -->
+          </select>
+          <button id="btnManageProjects" class="btn-xs" onclick="openProjectModal()" title="Kelola / Tambah Folder Proyek">
+            ⚙️ Kelola
+          </button>
+        </div>
+
+        <div class="sprint-status-banner">
+          <span id="sprintStatusDot" class="status-dot"></span>
+          <span id="sprintStatusText">Sprint Status: Idle</span>
+        </div>
+        <div class="office-clock">
+          <span>🕒</span>
+          <span id="officeClockDisplay">Day 1 • 09:00</span>
+        </div>
+      </div>
+
+      <div class="navbar-actions">
+        <button id="btnAskDaisy" class="btn-icon" onclick="openDaisyModal()" title="Tanya Daisy di Front Desk (Q&A Asisten)">
+          <span style="font-size: 14px;">🛎️</span> Tanya Daisy
+        </button>
+
+        <button id="btnCoffeeBreak" class="btn-icon" title="Kirim semua agen untuk rehat kopi di Pantry">
+          <span>☕</span> Coffee Break
+        </button>
+
+        <button id="btnSoundToggle" class="btn-icon" title="Toggle Suara 8-Bit Retro">
+          <span id="soundIcon">🔊</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Page Navigation -->
+    <nav class="page-nav" id="pageNav">
+      <button class="page-nav-btn active" data-page="page-office" onclick="showPage('page-office')">
+        <span>🗺️</span> Office
+      </button>
+      <button class="page-nav-btn" data-page="page-kanban" onclick="showPage('page-kanban')">
+        <span>📋</span> Kanban <span class="tab-badge" id="backlogCountBadge">2</span>
+      </button>
+      <button class="page-nav-btn" data-page="page-chat" onclick="showPage('page-chat')">
+        <span>💬</span> Chat <span class="tab-badge" id="chatCountBadge">0</span>
+      </button>
+      <button class="page-nav-btn" data-page="page-code" onclick="showPage('page-code')">
+        <span>💻</span> Kode <span class="tab-badge" id="codeCountBadge" style="display: none;">0</span>
+      </button>
+      <button class="page-nav-btn" data-page="page-meetings" onclick="showPage('page-meetings')">
+        <span>📅</span> Meeting
+      </button>
+      <button class="page-nav-btn" data-page="page-characters" onclick="showPage('page-characters')">
+        <span>👥</span> Karakter
+      </button>
+      <button class="page-nav-btn" data-page="page-daisy" onclick="openDaisyModal()">
+        <span>🛎️</span> Daisy
+      </button>
+      <button class="page-nav-btn" data-page="page-projects" onclick="openProjectModal()">
+        <span>📁</span> Proyek
+      </button>
+      <button class="page-nav-btn" data-page="page-settings" onclick="showPage('page-settings')">
+        <span>⚙️</span> Settings
+      </button>
+      <span class="page-nav-spacer"></span>
+      <button class="page-nav-btn ghost" id="btnFullscreenNav" onclick="toggleCanvasFullscreen()" title="Mode layar penuh untuk denah kantor">
+        <span>⛶</span> Fullscreen
+      </button>
+    </nav>
+
+    <!-- Main Workspace Layout (Page Router) -->
+    <main class="main-layout">
+
+      <!-- PAGE: OFFICE (Canvas Simulation Stage) -->
+      <section class="page page-office active" id="page-office">
+        <div class="canvas-stage-wrapper">
+          <!-- Room Zone Labels Toolbar -->
+          <div class="canvas-toolbar">
+            <div class="zone-tags">
+              <span class="zone-tag" data-room="pantry">
+                <span class="zone-dot" style="background: var(--role-scrum);"></span>
+                ☕ Pantry & Lounge
+              </span>
+              <span class="zone-tag" data-room="war_room">
+                <span class="zone-dot" style="background: var(--role-architect);"></span>
+                📊 Meeting Room
+              </span>
+              <span class="zone-tag" data-room="dev_cubicles">
+                <span class="zone-dot" style="background: var(--role-backend);"></span>
+                💻 Dev Cubicles
+              </span>
+              <span class="zone-tag" data-room="qa_server">
+                <span class="zone-dot" style="background: var(--role-qa);"></span>
+                🛡️ QA & Server
+              </span>
+              <span class="zone-tag" data-room="front_desk">
+                <span class="zone-dot" style="background: #f472b6;"></span>
+                🛎️ Front Desk
+              </span>
+            </div>
+
+            <span id="canvasHoverInfo" class="canvas-hover-info"></span>
+
+            <div class="canvas-quick-actions">
+              <button id="btnResetPositions" class="btn-xs" title="Atur ulang posisi agen ke Pantry">
+                ↺ Reset Posisi
+              </button>
+              <button id="btnFullscreenCanvas" class="btn-xs" onclick="toggleCanvasFullscreen()" title="Layar penuh denah kantor (ESC untuk keluar)">
+                ⛶ Fullscreen
+              </button>
+            </div>
+          </div>
+
+          <!-- Canvas Container -->
+          <div class="canvas-container" id="canvasContainer">
+            <canvas id="officeCanvas" width="1000" height="860"></canvas>
+
+            <!-- Fullscreen-only controls (shown via :fullscreen CSS) -->
+            <button id="btnExitFullscreen" class="btn-exit-fullscreen" onclick="toggleCanvasFullscreen()" title="Keluar dari mode layar penuh (ESC)">
+              ✕ Keluar Fullscreen
+            </button>
+            <div class="fullscreen-hint">Tekan <kbd>ESC</kbd> untuk keluar layar penuh</div>
+          </div>
+
+          <!-- Canvas HUD Overlay (Bottom Bar) -->
+          <div class="canvas-hud-overlay">
+            <div class="agents-quick-bar" id="agentsQuickBar">
+              <!-- 6 Sub-agents pills -->
+              <div class="agent-pill reception" data-agent="daisy" title="Klik untuk interaksi dengan Daisy (Front Desk)">
+                <span class="agent-icon">🛎️</span>
+                <span class="agent-identity">
+                  <span class="agent-name" id="hud_name_daisy">Daisy</span>
+                  <span class="agent-role" id="hud_role_daisy">Front Desk</span>
+                </span>
+                <span class="agent-status-tag" id="status_daisy">IDLE</span>
+              </div>
+              <div class="agent-pill scrum" data-agent="scrum_master" title="Klik untuk interaksi">
+                <span class="agent-icon">👑</span>
+                <span class="agent-identity">
+                  <span class="agent-name" id="hud_name_scrum_master">Citra</span>
+                  <span class="agent-role" id="hud_role_scrum_master">Scrum</span>
+                </span>
+                <span class="agent-status-tag" id="status_scrum_master">IDLE</span>
+              </div>
+              <div class="agent-pill architect" data-agent="system_architect" title="Klik untuk interaksi">
+                <span class="agent-icon">📐</span>
+                <span class="agent-identity">
+                  <span class="agent-name" id="hud_name_system_architect">Bram</span>
+                  <span class="agent-role" id="hud_role_system_architect">Architect</span>
+                </span>
+                <span class="agent-status-tag" id="status_system_architect">IDLE</span>
+              </div>
+              <div class="agent-pill backend" data-agent="backend_dev" title="Klik untuk interaksi">
+                <span class="agent-icon">⚡</span>
+                <span class="agent-identity">
+                  <span class="agent-name" id="hud_name_backend_dev">Reza</span>
+                  <span class="agent-role" id="hud_role_backend_dev">Backend</span>
+                </span>
+                <span class="agent-status-tag" id="status_backend_dev">IDLE</span>
+              </div>
+              <div class="agent-pill frontend" data-agent="frontend_dev" title="Klik untuk interaksi">
+                <span class="agent-icon">🎨</span>
+                <span class="agent-identity">
+                  <span class="agent-name" id="hud_name_frontend_dev">Maya</span>
+                  <span class="agent-role" id="hud_role_frontend_dev">Frontend</span>
+                </span>
+                <span class="agent-status-tag" id="status_frontend_dev">IDLE</span>
+              </div>
+              <div class="agent-pill qa" data-agent="qa_engineer" title="Klik untuk interaksi">
+                <span class="agent-icon">🛡️</span>
+                <span class="agent-identity">
+                  <span class="agent-name" id="hud_name_qa_engineer">Dimas</span>
+                  <span class="agent-role" id="hud_role_qa_engineer">QA</span>
+                </span>
+                <span class="agent-status-tag" id="status_qa_engineer">IDLE</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE: KANBAN (Sprint Backlog) -->
+      <section class="page" id="page-kanban">
+        <div class="page-inner">
+          <div class="page-heading">
+            <h2>📋 Sprint Kanban Board</h2>
+            <p>Kelola backlog, atur prioritas, dan pantau alur kerja tim agen secara drag-and-drop.</p>
+          </div>
+
+          <!-- Sprint Execution Card -->
+          <div class="sprint-header-card">
+            <!-- Weekly Sprint Selector -->
+            <div class="sprint-week-bar">
+              <div class="sprint-week-info">
+                <span style="font-size: 14px;">📅</span>
+                <label for="sprintWeekSelect" style="font-size: 11px; font-weight: 700; color: #fff; white-space: nowrap;">Sprint:</label>
+                <select id="sprintWeekSelect" class="form-select sprint-week-select" onchange="handleSprintWeekChange(event)">
+                  <!-- Dynamically populated with Sprint Minggu 1, 2, ... -->
+                </select>
+              </div>
+              <button type="button" id="btnNewSprintWeek" class="btn-xs primary" onclick="handleCreateNewSprintWeek()" title="Buka Sprint Minggu Selanjutnya">
+                ➕ Minggu Baru
+              </button>
+            </div>
+
+            <div class="sprint-progress-row">
+              <span id="sprintWeekProgressTitle" style="font-weight: 600;">Kemajuan Sprint Minggu 1</span>
+              <span id="sprintProgressLabel">0 / 2 Selesai (0%)</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" id="sprintProgressBar"></div>
+            </div>
+
+            <div class="sprint-actions">
+              <button id="btnStartSprint" class="btn-primary">
+                <span>▶</span> Mulai Eksekusi Sprint
+              </button>
+              <button id="btnPauseSprint" class="btn-secondary" style="display: none;">
+                <span>⏸</span> Jeda
+              </button>
+            </div>
+          </div>
+
+          <!-- Task Input Form (Collapsible, dengan autocomplete @file) -->
+          <div class="card-section collapsible-card" id="addTaskCard">
+            <div class="card-title collapsible-header" id="toggleAddTaskBtn" onclick="toggleAddTaskCollapse()" role="button" tabindex="0" aria-expanded="true">
+              <span class="card-title-text">Tambah Task Baru</span>
+              <span id="addTaskCollapseIcon" class="collapse-icon" aria-hidden="true">▼</span>
+            </div>
+
+            <form id="taskForm" onsubmit="handleAddTaskSubmit(event)" style="margin-top: 14px; position: relative;">
+              <div class="form-group" style="position: relative;">
+                <label class="form-label" for="taskTitle">
+                  Judul Task <span style="font-size: 10px; color: var(--accent-cyan); font-weight: normal;">(Ketik <code>@</code> untuk sebut file)</span>
+                </label>
+                <input type="text" id="taskTitle" class="form-input" placeholder="Contoh: Refactor modul auth di @server.js" autocomplete="off" required>
+              </div>
+
+              <div class="form-group" style="position: relative;">
+                <label class="form-label" for="taskDesc">
+                  Deskripsi Detail & Requirements <span style="font-size: 10px; color: var(--accent-cyan); font-weight: normal;">(Ketik <code>@</code> untuk sematkan file proyek)</span>
+                </label>
+                <textarea id="taskDesc" class="form-textarea" rows="2" placeholder="Jelaskan kebutuhan teknis, endpoint, atau acuan ke file seperti @server.js..." autocomplete="off" required></textarea>
+              </div>
+
+              <!-- Floating Autocomplete Dropdown for @file -->
+              <div id="fileAutocompleteDropdown" class="file-autocomplete-dropdown" style="display: none;"></div>
+
+              <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                  <label class="form-label" for="taskPriority">Skala Prioritas</label>
+                  <select id="taskPriority" class="form-select">
+                    <option value="1">1 - Critical (Tertinggi)</option>
+                    <option value="2">2 - High (Tinggi)</option>
+                    <option value="3" selected>3 - Medium (Sedang)</option>
+                    <option value="4">4 - Low (Rendah)</option>
+                  </select>
+                </div>
+                <div class="form-group" style="align-self: flex-end;">
+                  <button type="submit" class="btn-primary" style="padding: 8px 16px;">
+                    Tambah
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <!-- Kanban Board (Drag-and-Drop Workflow) -->
+          <div class="card-section kanban-section">
+            <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span>📊 Kanban Board Sprint</span>
+              </div>
+              <button class="btn-xs danger" onclick="handleClearCompletedTasks()" title="Bersihkan task yang sudah selesai pada minggu ini">
+                Bersihkan Selesai
+              </button>
+            </div>
+
+            <!-- 4 Status Columns -->
+            <div class="kanban-board" id="kanbanBoard">
+              <!-- Col 1: To Do -->
+              <div class="kanban-col" data-status="PENDING" ondragover="handleKanbanDragOver(event)" ondragleave="handleKanbanDragLeave(event)" ondrop="handleKanbanDrop(event, 'PENDING')">
+                <div class="kanban-col-header header-pending">
+                  <span class="col-title">📋 To Do</span>
+                  <span class="col-count" id="badge_col_pending">0</span>
+                </div>
+                <div class="kanban-cards" id="cards_PENDING"></div>
+              </div>
+
+              <!-- Col 2: In Progress -->
+              <div class="kanban-col" data-status="IN_PROGRESS" ondragover="handleKanbanDragOver(event)" ondragleave="handleKanbanDragLeave(event)" ondrop="handleKanbanDrop(event, 'IN_PROGRESS')">
+                <div class="kanban-col-header header-progress">
+                  <span class="col-title">⚡ In Progress</span>
+                  <span class="col-count" id="badge_col_in_progress">0</span>
+                </div>
+                <div class="kanban-cards" id="cards_IN_PROGRESS"></div>
+              </div>
+
+              <!-- Col 3: Review / Kendala -->
+              <div class="kanban-col" data-status="ERROR" ondragover="handleKanbanDragOver(event)" ondragleave="handleKanbanDragLeave(event)" ondrop="handleKanbanDrop(event, 'ERROR')">
+                <div class="kanban-col-header header-error">
+                  <span class="col-title">⚠️ Kendala / Review</span>
+                  <span class="col-count" id="badge_col_error">0</span>
+                </div>
+                <div class="kanban-cards" id="cards_ERROR"></div>
+              </div>
+
+              <!-- Col 4: Selesai -->
+              <div class="kanban-col" data-status="DONE" ondragover="handleKanbanDragOver(event)" ondragleave="handleKanbanDragLeave(event)" ondrop="handleKanbanDrop(event, 'DONE')">
+                <div class="kanban-col-header header-done">
+                  <span class="col-title">✅ Selesai</span>
+                  <span class="col-count" id="badge_col_done">0</span>
+                </div>
+                <div class="kanban-cards" id="cards_DONE"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE: LIVE CHAT -->
+      <section class="page" id="page-chat">
+        <div class="page-inner page-inner-wide">
+          <div class="page-heading">
+            <h2>💬 Live Office Chat</h2>
+            <p>Log percakapan dan serah-terima kerja antar-agen secara real-time.</p>
+          </div>
+          <div class="chat-container">
+            <!-- Filter Chips & Actions -->
+            <div class="chat-filter-bar" style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <button class="filter-chip active" data-filter="all">Semua</button>
+                <button class="filter-chip" data-filter="daisy">🛎️ Daisy</button>
+                <button class="filter-chip" data-filter="scrum">👑 Scrum Master</button>
+                <button class="filter-chip" data-filter="architect">📐 Architect</button>
+                <button class="filter-chip" data-filter="backend">⚡ Backend</button>
+                <button class="filter-chip" data-filter="frontend">🎨 Frontend</button>
+                <button class="filter-chip" data-filter="qa">🛡️ QA Security</button>
+              </div>
+              <button class="btn-xs danger" onclick="handleClearChatLog()" title="Bersihkan riwayat percakapan chat">
+                🗑️ Bersihkan
+              </button>
+            </div>
+
+            <!-- Stream Messages -->
+            <div class="chat-stream" id="chatStreamContainer">
+              <!-- Chat bubbles dynamically appended here -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE: KODE OUTPUT & DELIVERABLES -->
+      <section class="page" id="page-code">
+        <div class="page-inner page-inner-wide">
+          <div class="page-heading">
+            <h2>💻 Code & Deliverable Viewer</h2>
+            <p>Lihat, review, diff, dan terapkan hasil pekerjaan para agen ke file proyek.</p>
+          </div>
+          <div class="code-tab-container">
+            <div class="code-tab-header-card">
+              <div class="card-title" style="margin-bottom: 8px;">
+                <span>💻 Code & Deliverable Viewer</span>
+                <select id="deliverableTaskSelect" class="form-select" style="width: auto; padding: 4px 10px; font-size: 11px;">
+                  <!-- Populated dynamically with tasks -->
+                </select>
+              </div>
+              <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 10px;">
+                Pilih task dan agen untuk melihat, mereview, atau menyalin kode &amp; spesifikasi teknis yang dihasilkan.
+              </p>
+
+              <!-- Sub-tabs for each agent's deliverable -->
+              <div class="deliverables-tabs">
+                <button class="d-tab-btn active" data-dtab="scrum_master">👑 Scrum Specs</button>
+                <button class="d-tab-btn" data-dtab="system_architect">🗄️ MySQL & API</button>
+                <button class="d-tab-btn" data-dtab="backend_dev">⚙️ Backend Code</button>
+                <button class="d-tab-btn" data-dtab="frontend_dev">🎨 Frontend & JS</button>
+                <button class="d-tab-btn" data-dtab="qa_engineer">🛡️ QA Report</button>
+              </div>
+            </div>
+
+            <!-- Code Block Display -->
+            <div class="code-viewer-panel">
+              <div class="code-viewer-header">
+                <span id="codeViewerTitle" class="code-viewer-title">👑 Scrum Master Specifications</span>
+                <div style="display: flex; gap: 6px;">
+                  <button id="btnViewDiff" class="btn-xs" onclick="handleViewDiff()" title="Lihat perbedaan file terhadap versi terakhir (git)">
+                    📝 Lihat Diff
+                  </button>
+                  <button id="btnApplyDeliverables" class="btn-xs" onclick="handleApplyDeliverables()" title="Tulis deliverable agen ke file proyek (dengan backup)">
+                    💾 Terapkan ke File
+                  </button>
+                  <button id="btnOpenInEditor" class="btn-xs" onclick="handleOpenInEditor()" title="Buka file hasil di editor eksternal (Antigravity)">
+                    🚀 Buka di Antigravity
+                  </button>
+                  <button id="btnCopyCode" class="btn-xs" onclick="handleCopyCurrentCode()">
+                    📋 Copy Code
+                  </button>
+                </div>
+              </div>
+              <pre id="codeViewerContent" class="code-viewer-content">Belum ada deliverable yang selesai untuk task ini. Jalankan sprint untuk melihat hasil pekerjaan para agen.</pre>
+            </div>
+
+            <!-- Diff panel (hidden until requested) -->
+            <div id="diffPanel" class="code-viewer-panel" style="display: none; margin-top: 12px;">
+              <div class="code-viewer-header">
+                <span class="code-viewer-title">📝 Diff Perubahan File</span>
+                <button class="btn-xs" onclick="document.getElementById('diffPanel').style.display='none'">✕ Tutup</button>
+              </div>
+              <pre id="diffContent" class="code-viewer-content"></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE: MEETINGS (Weekly Retro & AI Upgrade) -->
+      <section class="page" id="page-meetings">
+        <div class="page-inner">
+          <div class="page-heading">
+            <h2>📅 Rapat Tim</h2>
+            <p>Weekly meeting &amp; AI upgrade meeting. Notulen disimpan otomatis sebagai file <code>.md</code>.</p>
+          </div>
+          <div class="card-section">
+            <div class="card-title" style="margin-bottom: 10px;">🎙️ Jalankan Rapat</div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button class="btn-primary" onclick="runWeeklyMeetingFromUI()" title="Semua karakter berdiskusi tentang pekerjaan sprint minggu ini">
+                📅 Weekly Meeting
+              </button>
+              <button class="btn-secondary" onclick="runUpgradeMeetingFromUI()" title="AI mengusulkan upgrade sistem & task baru">
+                🧠 AI Upgrade Meeting
+              </button>
+            </div>
+            <p style="font-size: 11px; color: var(--text-muted); margin-top: 10px; line-height: 1.5;">
+              Hasil rapat disimpan di folder <code>meetings/</code> pada folder proyek aktif (butuh server Node.js).
+            </p>
+          </div>
+          <div class="card-section">
+            <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span>📝 Notulen Tersimpan</span>
+              <button class="btn-xs" onclick="refreshMeetingsList()">🔄 Muat Ulang</button>
+            </div>
+            <div id="meetingsListContainer" class="meetings-list-container">
+              <div style="text-align: center; padding: 16px; color: var(--text-muted); font-size: 11px; font-style: italic;">Belum ada notulen. Jalankan rapat di atas.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE: CHARACTER SETUP -->
+      <section class="page" id="page-characters">
+        <div class="page-inner">
+          <div class="page-heading">
+            <h2>👥 Manajemen Karakter</h2>
+            <p>Tambah atau kurangi karakter tim. Deskripsi pekerjaan tiap karakter dapat di-generate oleh AI.</p>
+          </div>
+          <div id="characterPageContainer">
+            <div style="text-align: center; padding: 16px; color: var(--text-muted); font-size: 11px; font-style: italic;">Memuat karakter...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE: DAISY (Front Desk Q&A) -->
+      <section class="page" id="page-daisy">
+        <div class="page-inner">
+          <div class="page-heading">
+            <h2>🛎️ Tanya Daisy (Front Desk Assistant)</h2>
+            <p>Tanya jawab seputar kantor, alur sprint, atau konsep teknis (Pure Q&A, no code editing).</p>
+          </div>
+          <div class="daisy-page-body">
+            <!-- Daisy Dialogue Stream -->
+            <div id="daisyChatStream" class="daisy-chat-stream">
+              <div class="daisy-msg daisy">
+                <span class="daisy-msg-icon">🛎️</span>
+                <div class="daisy-msg-bubble">
+                  Halo! Selamat datang di Virtual Dev Office! Saya Daisy di meja Front Desk. Ada yang ingin Anda tanyakan seputar kantor, tugas agen, atau alur sprint? 😊
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick Suggestion Pills -->
+            <div class="daisy-quick-pills">
+              <button class="daisy-pill-btn" onclick="sendDaisyQuickQuestion('Bagaimana alur kerja 5 agen saat eksekusi sprint?')">Alur Kerja Tim 📋</button>
+              <button class="daisy-pill-btn" onclick="sendDaisyQuickQuestion('Bagaimana cara menyematkan @file di task sprint?')">Cara Pakai @file 📄</button>
+              <button class="daisy-pill-btn" onclick="sendDaisyQuickQuestion('Apa tugas masing-masing karakter di kantor ini?')">Peran Tim Dev 👥</button>
+            </div>
+
+            <!-- Input Bar -->
+            <form id="daisyInputForm" onsubmit="handleDaisyQuestionSubmit(event)" style="display: flex; gap: 8px; margin-top: 10px;">
+              <input type="text" id="daisyQuestionInput" class="form-input" placeholder="Tanyakan apa saja kepada Daisy..." autocomplete="off" required style="flex: 1;">
+              <button type="submit" id="btnSendDaisyQuestion" class="btn-primary" style="padding: 8px 16px; background: #ec4899; border-color: #f472b6;">
+                Kirim
+              </button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE: PROJECTS (Folder Context) -->
+      <section class="page" id="page-projects">
+        <div class="page-inner">
+          <div class="page-heading">
+            <h2>📁 Kelola Folder Proyek</h2>
+            <p>Pilih atau daftarkan folder proyek lokal sebagai konteks file &amp; sprint backlog.</p>
+          </div>
+          <div class="project-page-body">
+            <!-- Form Register New Project -->
+            <div class="card-section" style="background: rgba(255, 255, 255, 0.03); margin-bottom: 14px;">
+              <div class="card-title" style="margin-bottom: 8px;">➕ Tambah Folder Proyek Baru</div>
+              <form id="addProjectForm" onsubmit="handleAddProjectSubmit(event)">
+                <div class="form-group" style="margin-bottom: 8px;">
+                  <label class="form-label">Nama Proyek</label>
+                  <input type="text" id="newProjName" class="form-input" placeholder="Contoh: Custom Office / E-Commerce Backend" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 10px;">
+                  <label class="form-label">Path Folder Lokal (Direktori)</label>
+                  <input type="text" id="newProjPath" class="form-input" placeholder="Contoh: d:\Project\Virtual Office\Custom Office atau ." required>
+                </div>
+                <button type="submit" id="btnScanNewProject" class="btn-primary" style="width: 100%;">
+                  🔍 Validasi &amp; Pindai File Proyek
+                </button>
+              </form>
+            </div>
+
+            <!-- Registered Projects List -->
+            <div class="card-title" style="margin-bottom: 8px;">Daftar Proyek Terdaftar</div>
+            <div id="projectListContainer" class="project-list-container">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE: SETTINGS (API, Agents, MCP, Skills) -->
+      <section class="page" id="page-settings">
+        <div class="page-inner">
+          <div class="page-heading">
+            <h2>⚙️ Pengaturan</h2>
+            <p>Konfigurasi API AI, karakter tim, MCP server, dan Skills.</p>
+          </div>
+          <div class="settings-section">
+
+            <div class="info-alert">
+              💡 <strong>Konfigurasi API AI:</strong> Masukkan API Base URL, API Key, dan nama model AI (OpenRouter, OmniRoute, OpenAI, Groq, dll.) untuk menghubungkan alur kerja sub-agent dengan model LLM.
+            </div>
+
+            <!-- Form API Configuration -->
+            <form id="apiSettingsForm" onsubmit="handleSaveApiSettings(event)">
+              <div class="form-group">
+                <label class="form-label" for="settingApiBase">API Base URL</label>
+                <input type="url" id="settingApiBase" class="form-input" placeholder="https://openrouter.ai/api/v1" value="https://openrouter.ai/api/v1" required>
+                <span style="font-size: 10px; color: var(--text-muted); margin-top: 4px; display: block;">
+                  Mendukung OpenRouter, OmniRoute, OpenAI, Groq, Ollama, atau endpoint lokal.
+                </span>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="settingApiKey">API Key</label>
+                <div style="position: relative;">
+                  <input type="password" id="settingApiKey" class="form-input" placeholder="sk-or-v1-xxxxxxxxxxxxxxxxxxxx" style="padding-right: 40px;">
+                  <button type="button" class="btn-xs" style="position: absolute; right: 6px; top: 6px;" onclick="toggleApiKeyVisibility()">
+                    👁
+                  </button>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="settingModel">Nama Model</label>
+                <input type="text" id="settingModel" class="form-input" placeholder="deepseek/deepseek-chat" value="deepseek/deepseek-chat" required>
+              </div>
+
+              <div style="display: flex; gap: 8px; margin-top: 16px;">
+                <button type="submit" class="btn-primary" style="flex: 1;">
+                  💾 Simpan Pengaturan
+                </button>
+                <button type="button" id="btnTestApi" class="btn-secondary" onclick="handleTestApiConnection()">
+                  🔌 Test Koneksi
+                </button>
+              </div>
+            </form>
+
+            <!-- Editor Preference -->
+            <div class="card-section" style="margin-top: 14px;">
+              <div class="card-title" style="margin-bottom: 8px;">🚀 Editor Eksternal (untuk Diff / Buka File)</div>
+              <div class="form-group" style="margin-bottom: 4px;">
+                <label class="form-label" for="settingEditor">Perintah Editor</label>
+                <select id="settingEditor" class="form-select" onchange="handleSaveEditorPref(event)">
+                  <option value="antigravity">antigravity</option>
+                  <option value="code">code (VS Code)</option>
+                  <option value="cursor">cursor</option>
+                  <option value="windsurf">windsurf</option>
+                  <option value="notepad">notepad</option>
+                </select>
+              </div>
+              <p style="font-size: 10px; color: var(--text-muted); line-height: 1.5;">
+                Dipakai tombol <strong>"Buka di Antigravity"</strong> pada halaman Kode Output.
+              </p>
+            </div>
+
+            <!-- Office Agent Settings Card -->
+            <div class="card-section" style="margin-top: 14px;">
+              <div class="card-title" style="display: flex; align-items: center; justify-content: space-between;">
+                <span>👥 Pengaturan Karakter &amp; Model AI Tim</span>
+                <span style="font-size: 10px; color: var(--accent-cyan);">Per-Agent Model</span>
+              </div>
+              <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5;">
+                Ubah nama panggilan/lengkap setiap karakter, serta tentukan model AI spesifik untuk masing-masing agen (kosongkan untuk menggunakan Model Global).
+              </p>
+
+              <div id="characterSettingsContainer">
+                <!-- Scrum Master -->
+                <div class="agent-setting-card" style="border-left: 3px solid #f59e0b;">
+                  <div class="agent-setting-header">
+                    <span>👑</span>
+                    <strong style="color: #f59e0b;">Scrum Master &amp; Orchestrator</strong>
+                  </div>
+                  <div class="agent-setting-grid">
+                    <div class="form-group" style="margin-bottom: 6px;">
+                      <label class="form-label">Nama Panggilan</label>
+                      <input type="text" id="charName_scrum_master" class="form-input" placeholder="Citra">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 6px;">
+                      <label class="form-label">Nama Lengkap &amp; Role</label>
+                      <input type="text" id="charFullName_scrum_master" class="form-input" placeholder="Citra (Scrum Master)">
+                    </div>
+                  </div>
+                  <div class="form-group" style="margin-bottom: 4px;">
+                    <label class="form-label">Model AI Agen Ini (Opsional)</label>
+                    <input type="text" id="charModel_scrum_master" class="form-input" placeholder="(Default: Gunakan Model Global)">
+                  </div>
+                </div>
+
+                <!-- System Architect -->
+                <div class="agent-setting-card" style="border-left: 3px solid #a855f7;">
+                  <div class="agent-setting-header">
+                    <span>📐</span>
+                    <strong style="color: #a855f7;">DB &amp; System Architect</strong>
+                  </div>
+                  <div class="agent-setting-grid">
+                    <div class="form-group" style="margin-bottom: 6px;">
+                      <label class="form-label">Nama Panggilan</label>
+                      <input type="text" id="charName_system_architect" class="form-input" placeholder="Bram">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 6px;">
+                      <label class="form-label">Nama Lengkap &amp; Role</label>
+                      <input type="text" id="charFullName_system_architect" class="form-input" placeholder="Bram (Architect)">
+                    </div>
+                  </div>
+                  <div class="form-group" style="margin-bottom: 4px;">
+                    <label class="form-label">Model AI Agen Ini (Opsional)</label>
+                    <input type="text" id="charModel_system_architect" class="form-input" placeholder="(Default: Gunakan Model Global)">
+                  </div>
+                </div>
+
+                <!-- Backend Dev -->
+                <div class="agent-setting-card" style="border-left: 3px solid #38bdf8;">
+                  <div class="agent-setting-header">
+                    <span>⚡</span>
+                    <strong style="color: #38bdf8;">Senior Backend Developer (PHP/CI4)</strong>
+                  </div>
+                  <div class="agent-setting-grid">
+                    <div class="form-group" style="margin-bottom: 6px;">
+                      <label class="form-label">Nama Panggilan</label>
+                      <input type="text" id="charName_backend_dev" class="form-input" placeholder="Reza">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 6px;">
+                      <label class="form-label">Nama Lengkap &amp; Role</label>
+                      <input type="text" id="charFullName_backend_dev" class="form-input" placeholder="Reza (Backend)">
+                    </div>
+                  </div>
+                  <div class="form-group" style="margin-bottom: 4px;">
+                    <label class="form-label">Model AI Agen Ini (Opsional)</label>
+                    <input type="text" id="charModel_backend_dev" class="form-input" placeholder="(Default: Gunakan Model Global)">
+                  </div>
+                </div>
+
+                <!-- Frontend Dev -->
+                <div class="agent-setting-card" style="border-left: 3px solid #34d399;">
+                  <div class="agent-setting-header">
+                    <span>🎨</span>
+                    <strong style="color: #34d399;">Frontend / JavaScript Developer</strong>
+                  </div>
+                  <div class="agent-setting-grid">
+                    <div class="form-group" style="margin-bottom: 6px;">
+                      <label class="form-label">Nama Panggilan</label>
+                      <input type="text" id="charName_frontend_dev" class="form-input" placeholder="Maya">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 6px;">
+                      <label class="form-label">Nama Lengkap &amp; Role</label>
+                      <input type="text" id="charFullName_frontend_dev" class="form-input" placeholder="Maya (Frontend)">
+                    </div>
+                  </div>
+                  <div class="form-group" style="margin-bottom: 4px;">
+                    <label class="form-label">Model AI Agen Ini (Opsional)</label>
+                    <input type="text" id="charModel_frontend_dev" class="form-input" placeholder="(Default: Gunakan Model Global)">
+                  </div>
+                </div>
+
+                <!-- QA Engineer -->
+                <div class="agent-setting-card" style="border-left: 3px solid #f43f5e;">
+                  <div class="agent-setting-header">
+                    <span>🛡️</span>
+                    <strong style="color: #f43f5e;">QA &amp; Security Engineer</strong>
+                  </div>
+                  <div class="agent-setting-grid">
+                    <div class="form-group" style="margin-bottom: 6px;">
+                      <label class="form-label">Nama Panggilan</label>
+                      <input type="text" id="charName_qa_engineer" class="form-input" placeholder="Dimas">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 6px;">
+                      <label class="form-label">Nama Lengkap &amp; Role</label>
+                      <input type="text" id="charFullName_qa_engineer" class="form-input" placeholder="Dimas (QA)">
+                    </div>
+                  </div>
+                  <div class="form-group" style="margin-bottom: 4px;">
+                    <label class="form-label">Model AI Agen Ini (Opsional)</label>
+                    <input type="text" id="charModel_qa_engineer" class="form-input" placeholder="(Default: Gunakan Model Global)">
+                  </div>
+                </div>
+
+                <!-- Daisy (Front Desk Assistant) -->
+                <div class="agent-setting-card" style="border-left: 3px solid #f472b6;">
+                  <div class="agent-setting-header">
+                    <span>🛎️</span>
+                    <strong style="color: #f472b6;">Front Desk &amp; Office Assistant (Pure Q&amp;A)</strong>
+                  </div>
+                  <div class="agent-setting-grid">
+                    <div class="form-group" style="margin-bottom: 6px;">
+                      <label class="form-label">Nama Panggilan</label>
+                      <input type="text" id="charName_daisy" class="form-input" placeholder="Daisy">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 6px;">
+                      <label class="form-label">Nama Lengkap &amp; Role</label>
+                      <input type="text" id="charFullName_daisy" class="form-input" placeholder="Daisy (Front Desk)">
+                    </div>
+                  </div>
+                  <div class="form-group" style="margin-bottom: 4px;">
+                    <label class="form-label">Model AI Agen Ini (Opsional)</label>
+                    <input type="text" id="charModel_daisy" class="form-input" placeholder="(Default: Gunakan Model Global)">
+                  </div>
+                </div>
+              </div>
+
+              <button type="button" class="btn-primary" onclick="handleSaveAgentSettings()" style="width: 100%; margin-top: 10px;">
+                💾 Simpan Pengaturan Karakter &amp; Model AI
+              </button>
+            </div>
+
+            <!-- MCP & Skills Settings (populated by integrations module) -->
+            <div id="integrationsSettingsContainer"></div>
+
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Toast Notifications Container -->
+    <div id="toastContainer" class="toast-container"></div>
+  </div>
+
+  <!-- Scripts in dependency order -->
+  <script src="js/config.js"></script>
+  <script src="js/waypoints.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/characters.js"></script>
+  <script src="js/simulation-data.js"></script>
+  <script src="js/llm-client.js"></script>
+  <script src="js/sprint-manager.js"></script>
+  <script src="js/integrations.js"></script>
+  <script src="js/meetings.js"></script>
+  <script src="js/character-manager.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
